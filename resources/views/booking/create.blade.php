@@ -12,7 +12,10 @@
 @endphp
 
 @section('content')
-    <h1>Agende seu horário</h1>
+    <div class="page-header">
+        <h1>Agende seu horário</h1>
+        <p>Escolha o serviço, o profissional e um horário livre. Não precisa criar conta.</p>
+    </div>
 
     @if ($errors->any())
         <div class="alert" role="alert">
@@ -24,35 +27,69 @@
         </div>
     @endif
 
-    <form id="booking-form" class="card" method="POST" action="{{ route('booking.store') }}">
+    <form id="booking-form" method="POST" action="{{ route('booking.store') }}">
         @csrf
         <input type="hidden" name="starts_at" id="starts_at" value="">
 
-        <label for="service_id">1. Serviço</label>
-        <select name="service_id" id="service_id" required>
-            <option value="">Escolha um serviço</option>
-        </select>
+        <section class="section">
+            <div class="section-header">
+                <h2>Horário</h2>
+                <p>Os horários mostrados já estão livres na agenda do profissional.</p>
+            </div>
+            <div class="section-body">
+                <div class="field">
+                    <label for="service_id" class="label">Serviço<sup>*</sup></label>
+                    <select name="service_id" id="service_id" required>
+                        <option value="">Escolha um serviço</option>
+                    </select>
+                </div>
 
-        <label for="professional_id">2. Profissional</label>
-        <select name="professional_id" id="professional_id" required disabled>
-            <option value="">Escolha um profissional</option>
-        </select>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="professional_id" class="label">Profissional<sup>*</sup></label>
+                        <select name="professional_id" id="professional_id" required disabled>
+                            <option value="">Escolha um profissional</option>
+                        </select>
+                    </div>
 
-        <label for="date">3. Dia</label>
-        <input type="date" id="date">
+                    <div class="field">
+                        <label for="date" class="label">Dia<sup>*</sup></label>
+                        <input type="date" id="date">
+                    </div>
+                </div>
 
-        <label>4. Horário</label>
-        <div id="slots" class="slots" aria-live="polite"></div>
-        <p id="slots-msg" class="muted">Escolha serviço, profissional e dia para ver os horários.</p>
+                <div class="field">
+                    <span class="label">Horário<sup>*</sup></span>
+                    <div id="slots" class="slots" aria-live="polite"></div>
+                    <p id="slots-msg" class="hint">Escolha serviço, profissional e dia para ver os horários.</p>
+                </div>
+            </div>
+        </section>
 
-        <label for="customer_name">Seu nome</label>
-        <input type="text" name="customer_name" id="customer_name" value="{{ old('customer_name') }}" maxlength="120" required>
+        <section class="section">
+            <div class="section-header">
+                <h2>Seus dados</h2>
+                <p>Usados só para o estabelecimento falar com você sobre este agendamento.</p>
+            </div>
+            <div class="section-body">
+                <div class="field">
+                    <label for="customer_name" class="label">Nome<sup>*</sup></label>
+                    <input type="text" name="customer_name" id="customer_name" value="{{ old('customer_name') }}" maxlength="120" autocomplete="name" required>
+                </div>
 
-        <label for="customer_phone">Telefone (com DDD)</label>
-        <input type="tel" name="customer_phone" id="customer_phone" value="{{ old('customer_phone') }}" placeholder="(77) 99999-9999" required>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="customer_phone" class="label">Telefone com DDD<sup>*</sup></label>
+                        <input type="tel" name="customer_phone" id="customer_phone" value="{{ old('customer_phone') }}" placeholder="(77) 99999-9999" autocomplete="tel" required>
+                    </div>
 
-        <label for="customer_email">E-mail (opcional)</label>
-        <input type="email" name="customer_email" id="customer_email" value="{{ old('customer_email') }}">
+                    <div class="field">
+                        <label for="customer_email" class="label">E-mail</label>
+                        <input type="email" name="customer_email" id="customer_email" value="{{ old('customer_email') }}" placeholder="opcional" autocomplete="email">
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <button type="submit" id="submit" class="btn" disabled>Confirmar agendamento</button>
     </form>
