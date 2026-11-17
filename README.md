@@ -1,58 +1,122 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Agendly
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de agendamento online para negócios de serviço (barbearia, salão, estúdio). O cliente escolhe serviço, profissional e horário em uma página pública, **sem criar conta**. O estabelecimento gerencia tudo por um painel administrativo.
 
-## About Laravel
+**Stack:** PHP 8.3+ · Laravel 13 · Filament 5 · SQLite (troca por MySQL/Postgres só pelo `.env`) · PHPUnit
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Funcionalidades
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Página pública (`/agendar`)
+- Escolha de serviço → profissional que realiza aquele serviço → dia → horário livre.
+- Horários calculados em tempo real a partir da jornada do profissional, folgas e agendamentos existentes.
+- Ao confirmar, o cliente recebe um **link secreto** (`/agendamento/{token}`) que serve de comprovante.
+- Pelo mesmo link o cliente **cancela sozinho** até 2h antes do horário. O horário volta a ficar livre na hora.
 
-## Learning Laravel
+### Painel administrativo (`/admin`)
+- **Início:** resumo do dia: atendimentos ativos, próximo cliente, faturamento previsto e faltas.
+- **Agenda:** abas Hoje / Próximos / Anteriores, filtros por profissional, status e dia, busca por nome ou telefone.
+  - Agendamento pelo painel (telefone/balcão), com a mesma proteção contra conflito da página pública.
+  - Mudança de status com regras de transição (veja abaixo).
+- **Serviços:** nome, duração, preço, ativo/inativo.
+- **Profissionais:** serviços que realiza e jornada por dia da semana, com vários blocos por dia (pausa de almoço).
+- **Folgas e bloqueios:** férias, consultas, feriados. Some da página pública imediatamente.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Regras de negócio
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+| Regra | Onde |
+|---|---|
+| O serviço inteiro precisa caber num bloco de trabalho (um corte de 60 min não começa às 11:30 se o bloco acaba às 12:00) | `AvailabilityService` |
+| Horários passados não são oferecidos; agendamento até 60 dias à frente | `AvailabilityService`, Form Requests |
+| Agendamentos podem ser colados (10:00–10:30 e 10:30–11:00), mas nunca sobrepostos | `AvailabilityService`, `BookingService` |
+| Só **Pendente** e **Confirmado** ocupam a agenda; cancelado/concluído/falta liberam o horário | `AppointmentStatus::blocking()` |
+| Pendente → Confirmado/Cancelado · Confirmado → Concluído/Faltou/Cancelado · demais são finais | `AppointmentStatus::allowedTransitions()` |
+| Concluído e Faltou só depois que o horário começou | `Appointment::canTransitionTo()` |
+| Folga não pode ser criada por cima de agendamentos ativos: o admin resolve esses antes | `TimeOff::conflictingAppointments()` |
+| Serviço ou profissional com histórico não é excluído, apenas desativado | `ServicePolicy`, `ProfessionalPolicy` |
+| Agendamento não é editado nem excluído pelo painel: só muda de status | `AppointmentPolicy` |
 
-## Agentic Development
+### Proteção contra agendamento duplicado
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Dois clientes podem abrir a página ao mesmo tempo, ver o mesmo horário livre e clicar em "Confirmar" juntos. Para que só um consiga, o `BookingService` faz tudo dentro de uma transação:
 
-```bash
-composer require laravel/boost --dev
+```mermaid
+sequenceDiagram
+    participant A as Cliente A
+    participant B as Cliente B
+    participant DB as Banco
 
-php artisan boost:install
+    A->>DB: BEGIN + lockForUpdate(profissional)
+    B->>DB: BEGIN + lockForUpdate(profissional)
+    Note over B,DB: B espera a trava de A
+    A->>DB: horário ainda livre? sim → INSERT
+    A->>DB: COMMIT (libera a trava)
+    DB-->>B: trava liberada
+    B->>DB: horário ainda livre? não
+    B->>DB: ROLLBACK → "Esse horário acabou de ser ocupado"
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+A trava é na linha do **profissional**, não do horário. Assim ela serializa só os agendamentos daquele profissional e cobre também serviços de durações diferentes que se sobrepõem parcialmente.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Como rodar
 
-## Code of Conduct
+```bash
+git clone https://github.com/ArthurCoode/Agendly.git
+cd Agendly
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+composer install
+cp .env.example .env
+php artisan key:generate
 
-## Security Vulnerabilities
+touch database/database.sqlite   # no Windows: New-Item database/database.sqlite
+php artisan migrate --seed
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+php artisan serve
+```
 
-## License
+- Página pública: http://localhost:8000
+- Painel: http://localhost:8000/admin · `admin@agendly.test` / `password`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+O seeder cria 3 serviços e 2 profissionais com jornada de segunda a sábado (09–12h e 13–18h).
+
+### Produção
+- Defina `ADMIN_EMAIL` e `ADMIN_PASSWORD` no `.env`. Sem senha definida, o seeder se recusa a rodar em produção.
+- `APP_TIMEZONE` (padrão `America/Sao_Paulo`) define o "hoje" da agenda e quais horários já passaram.
+
+---
+
+## Testes
+
+```bash
+php artisan test
+```
+
+43 testes cobrindo cálculo de horários, conflito de agendamento, fluxo público, cancelamento pelo cliente e telas e ações do painel.
+
+---
+
+## Estrutura
+
+```
+app/
+├── Enums/AppointmentStatus.php        # status, cores, transições permitidas
+├── Services/
+│   ├── AvailabilityService.php        # calcula horários livres
+│   └── BookingService.php             # cria agendamento com trava (transação + lock)
+├── Http/Controllers/BookingController.php
+├── Models/                            # Appointment, Professional, Service, TimeOff, WorkingHour
+├── Policies/                          # o que o painel pode ou não fazer
+└── Filament/
+    ├── Resources/                     # Agenda, Serviços, Profissionais, Folgas
+    └── Widgets/TodayOverview.php      # resumo do dia
+```
+
+## Próximos passos possíveis
+- E-mail/WhatsApp de confirmação com o link de cancelamento.
+- Reagendamento pelo link (hoje: cancelar e agendar de novo).
+- Múltiplos estabelecimentos (multi-tenant).
