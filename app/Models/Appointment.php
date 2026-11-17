@@ -52,6 +52,26 @@ class Appointment extends Model
         return $this->belongsTo(Service::class);
     }
 
+    public function canTransitionTo(AppointmentStatus $status): bool
+    {
+        if (! in_array($status, $this->status->allowedTransitions(), true)) {
+            return false;
+        }
+
+        return ! $status->requiresStarted() || $this->starts_at->isPast();
+    }
+
+    public function transitionTo(AppointmentStatus $status): void
+    {
+        if (! $this->canTransitionTo($status)) {
+            throw new \DomainException(
+                "Não é possível mudar de {$this->status->label()} para {$status->label()}."
+            );
+        }
+
+        $this->update(['status' => $status]);
+    }
+
     /** Agendamentos que ocupam horário (pendente ou confirmado). */
     public function scopeBlocking(Builder $query): Builder
     {
