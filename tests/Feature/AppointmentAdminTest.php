@@ -98,6 +98,52 @@ class AppointmentAdminTest extends TestCase
         $this->assertSame(AppointmentStatus::Completed, $past->fresh()->status);
     }
 
+    private function bookingData(string $time): array
+    {
+        $service = Service::firstOrCreate(['name' => 'Corte'], ['duration_minutes' => 30, 'price' => 40]);
+        $professional = Professional::firstOrCreate(['name' => 'João']);
+        $professional->services()->syncWithoutDetaching($service);
+        $professional->workingHours()->firstOrCreate(['weekday' => 3, 'start_time' => '09:00', 'end_time' => '18:00']);
+
+        return [
+            'service_id' => $service->id,
+            'professional_id' => $professional->id,
+            'date' => '2026-11-18', // quarta-feira
+            'time' => $time,
+            'customer_name' => 'Carlos',
+            'customer_phone' => '(77) 98888-7777',
+        ];
+    }
+
+    public function test_admin_agenda_pelo_painel(): void
+    {
+        Livewire::test(ListAppointments::class)
+            ->callAction('book', $this->bookingData('15:00'))
+            ->assertHasNoActionErrors();
+
+        $appointment = Appointment::where('customer_name', 'Carlos')->firstOrFail();
+
+        $this->assertSame('2026-11-18 15:00', $appointment->starts_at->format('Y-m-d H:i'));
+        $this->assertSame('2026-11-18 15:30', $appointment->ends_at->format('Y-m-d H:i'));
+        $this->assertSame('77988887777', $appointment->customer_phone);
+        $this->assertSame(AppointmentStatus::Confirmed, $appointment->status);
+    }
+
+    public function test_painel_nao_agenda_horario_ocupado_nem_passado(): void
+    {
+        $this->makeAppointment('2026-11-18 15:00');
+
+        Livewire::test(ListAppointments::class)
+            ->callAction('book', $this->bookingData('15:00'))
+            ->assertHasActionErrors(['time']);
+
+        Livewire::test(ListAppointments::class)
+            ->callAction('book', $this->bookingData('10:00')) // agora são 12:00
+            ->assertHasActionErrors(['time']);
+
+        $this->assertSame(0, Appointment::where('customer_name', 'Carlos')->count());
+    }
+
     public function test_status_finais_nao_mudam(): void
     {
         $cancelled = $this->makeAppointment('2026-11-18 15:00', AppointmentStatus::Cancelled);

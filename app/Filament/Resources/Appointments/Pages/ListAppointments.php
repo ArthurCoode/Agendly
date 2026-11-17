@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Appointments\Pages;
 
+use App\Filament\Resources\Appointments\Actions\BookAppointmentAction;
 use App\Filament\Resources\Appointments\AppointmentResource;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -10,6 +11,13 @@ use Illuminate\Database\Eloquent\Builder;
 class ListAppointments extends ListRecords
 {
     protected static string $resource = AppointmentResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            BookAppointmentAction::make(),
+        ];
+    }
 
     public function getTabs(): array
     {

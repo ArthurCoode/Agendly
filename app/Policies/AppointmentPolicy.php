@@ -6,8 +6,9 @@ use App\Models\Appointment;
 use App\Models\User;
 
 /**
- * O painel só consulta e muda status. Criar passa pelo BookingService
- * (trava contra conflito); editar horário livremente furaria essa proteção.
+ * O painel não usa o create/edit genérico do Filament: criar passa pela
+ * BookAppointmentAction (BookingService, com trava contra conflito) e
+ * editar horário livremente furaria essa proteção.
  */
 class AppointmentPolicy
 {
