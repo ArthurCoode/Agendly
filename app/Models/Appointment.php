@@ -52,6 +52,16 @@ class Appointment extends Model
         return $this->belongsTo(Service::class);
     }
 
+    /** Antecedência mínima para o próprio cliente cancelar pelo link. */
+    public const CUSTOMER_CANCEL_NOTICE_HOURS = 2;
+
+    /** Em cima da hora, o cancelamento passa a ser só pelo estabelecimento. */
+    public function customerCanCancel(): bool
+    {
+        return $this->canTransitionTo(AppointmentStatus::Cancelled)
+            && now()->addHours(self::CUSTOMER_CANCEL_NOTICE_HOURS)->lte($this->starts_at);
+    }
+
     public function canTransitionTo(AppointmentStatus $status): bool
     {
         if (! in_array($status, $this->status->allowedTransitions(), true)) {

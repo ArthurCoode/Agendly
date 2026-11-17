@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AppointmentStatus;
 use App\Exceptions\SlotUnavailableException;
 use App\Http\Requests\AvailableSlotsRequest;
 use App\Http\Requests\StoreAppointmentRequest;
@@ -86,5 +87,23 @@ class BookingController extends Controller
             ->firstOrFail();
 
         return view('booking.show', compact('appointment'));
+    }
+
+    /** Cancelamento pelo próprio cliente: o token é a única credencial. */
+    public function cancel(string $token): RedirectResponse
+    {
+        $appointment = Appointment::where('token', $token)->firstOrFail();
+
+        if (! $appointment->customerCanCancel()) {
+            return back()->withErrors([
+                'cancel' => 'Este agendamento não pode mais ser cancelado por aqui. Entre em contato com o estabelecimento.',
+            ]);
+        }
+
+        $appointment->transitionTo(AppointmentStatus::Cancelled);
+
+        return redirect()
+            ->route('booking.show', $appointment->token)
+            ->with('status', 'Agendamento cancelado. O horário foi liberado.');
     }
 }

@@ -30,6 +30,10 @@
         .muted { color: var(--muted); margin: .5rem 0 0; }
         .alert { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1rem; }
         .alert ul { margin: 0; padding-left: 1.1rem; }
+        .alert.success { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+        .btn.outline-danger { background: transparent; color: var(--danger); border: 1px solid #fecaca; }
+        .btn.outline-danger:hover { background: var(--danger-bg); }
+        .btn.outline-danger:focus-visible { outline-color: var(--danger); }
         dl.summary { display: grid; grid-template-columns: auto 1fr; gap: .5rem 1rem; margin: 0; }
         dl.summary dt { color: var(--muted); }
         dl.summary dd { margin: 0; font-weight: 600; }

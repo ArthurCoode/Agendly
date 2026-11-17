@@ -11,3 +11,6 @@ Route::post('/agendar', [BookingController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('booking.store');
 Route::get('/agendamento/{token}', [BookingController::class, 'show'])->name('booking.show');
+Route::post('/agendamento/{token}/cancelar', [BookingController::class, 'cancel'])
+    ->middleware('throttle:10,1')
+    ->name('booking.cancel');
