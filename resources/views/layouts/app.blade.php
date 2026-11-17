@@ -16,9 +16,12 @@
             --danger-bg: #fef2f2; --danger-ink: #b91c1c; --danger-ring: rgb(220 38 38 / .15);
             --success-bg: #f0fdf4; --success-ink: #15803d; --success-ring: rgb(22 163 74 / .15);
             --shadow: 0 1px 2px rgb(0 0 0 / .05);
+            color-scheme: light;
         }
         @media (prefers-color-scheme: dark) {
             :root {
+                /* Faz o navegador desenhar listas de <select>, calendário e barras no tema escuro. */
+                color-scheme: dark;
                 --bg: #09090b; --surface: #18181b; --ink: #fafafa; --ink-soft: #d4d4d8; --muted: #a1a1aa;
                 --ring: rgb(255 255 255 / .1); --ring-input: rgb(255 255 255 / .1); --field: rgb(255 255 255 / .05); --field-disabled: transparent;
                 --danger-bg: rgb(220 38 38 / .1); --danger-ink: #f87171; --danger-ring: rgb(248 113 113 / .2);
@@ -54,6 +57,8 @@
         .label sup { color: var(--danger-ink); font-weight: 500; }
         input, select { width: 100%; height: 2.25rem; padding: 0 .75rem; border: 0; border-radius: .5rem; font: inherit; color: var(--ink); background: var(--field); box-shadow: var(--shadow), inset 0 0 0 1px var(--ring-input); }
         select { appearance: none; padding-right: 2.25rem; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2371717a'%3e%3cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right .5rem center; background-size: 1.25rem; }
+        /* A lista aberta não aceita fundo translúcido: sem cor sólida, vira texto claro em fundo branco. */
+        select option { background-color: var(--surface); color: var(--ink); }
         input::placeholder { color: var(--muted); }
         input:focus, select:focus { outline: none; box-shadow: inset 0 0 0 2px var(--primary-600); }
         input:disabled, select:disabled { background-color: var(--field-disabled); color: var(--muted); cursor: not-allowed; }
